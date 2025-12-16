@@ -1,13 +1,11 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { GoogleGenAI } from "@google/genai";
 import { 
   Upload, 
   Database, 
   Settings, 
   Play, 
   BarChart2, 
-  Brain,
   ChevronRight,
   TrendingUp,
   Download,
@@ -17,7 +15,8 @@ import {
   Users,
   Scale,
   AlertTriangle,
-  Filter
+  Filter,
+  Brain
 } from "lucide-react";
 
 // --- Types ---
@@ -385,50 +384,6 @@ const App = () => {
   });
   
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-
-  // Gemini Insight Generation
-  const generateInsight = async () => {
-    if (!result || !config) return;
-    setAiLoading(true);
-    setAiAnalysis(null);
-
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = `
-        I have performed a PSM Analysis.
-        
-        Metrics:
-        - Treatment Size: ${result.treatmentGroupSize}
-        - Matched Pairs: ${result.matchedPairs}
-        - Dropped Cases (No Common Support/Caliper): ${result.droppedCount}
-        
-        ATT Results:
-        ${Object.entries(result.att).map(([k, v]) => `- ${k}: ${(v as number).toFixed(4)}`).join('\n')}
-        
-        Balance (SMD):
-        ${result.balanceMetrics.map(b => `- ${b.covariate}: Pre=${b.preSMD.toFixed(3)}, Post=${b.postSMD.toFixed(3)}`).join('\n')}
-        
-        Task:
-        1. Evaluate the matching quality based on SMD and dropped cases. Is the causal inference valid?
-        2. Interpret the ATT results.
-        3. Provide business recommendation.
-      `;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
-
-      setAiAnalysis(response.text || "No analysis generated.");
-    } catch (error) {
-      console.error(error);
-      setAiAnalysis("Failed to generate AI insight.");
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -449,7 +404,6 @@ const App = () => {
     if (!dataset) return;
     setLoading(true);
     setResult(null);
-    setAiAnalysis(null);
     setActiveTab('balance'); // Direct user to balance check first as it's critical
 
     setTimeout(() => {
@@ -854,10 +808,6 @@ const App = () => {
                   <div className="card">
                     <div className="flex justify-between items-center" style={{marginBottom: '1rem'}}>
                       <h3>ATT Results (Causal Effect)</h3>
-                      <button className="btn btn-outline text-sm" onClick={generateInsight} disabled={aiLoading}>
-                        {aiLoading ? <div className="spinner" style={{width: 14, height: 14}}></div> : <Brain size={14} />} 
-                        Ask AI
-                      </button>
                     </div>
                     
                     <table style={{width: '100%', borderCollapse: 'collapse'}}>
@@ -888,17 +838,6 @@ const App = () => {
                       </tbody>
                     </table>
                   </div>
-
-                  {aiAnalysis && (
-                    <div className="card" style={{borderLeft: '4px solid #8b5cf6'}}>
-                      <h3 className="flex items-center gap-2" style={{marginBottom: '0.5rem', color: '#7c3aed'}}>
-                        <Brain size={20} /> AI Analyst Insight
-                      </h3>
-                      <div style={{whiteSpace: 'pre-line', fontSize: '0.95rem', lineHeight: '1.6'}}>
-                        {aiAnalysis}
-                      </div>
-                    </div>
-                  )}
                 </div>
             </>
           )}
